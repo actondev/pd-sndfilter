@@ -16,6 +16,12 @@ Todos
   #+begin_src sh
 rm -rf build
 meson setup build
+meson compile -C build
+
+# Building in release mode
+meson configure build -Dbuildtype=release
+# some extra args as seen in reference Makefile
+meson configure build -Dc_args='-funroll-loops -fomit-frame-pointer -O6'
   #+end_src
 
 ** allow-shlib-undefined stupidity & spotting ACTUAL linker error
@@ -78,6 +84,32 @@ rm -rf ~/.local/lib/pd/extra/sndfilter/
 puredata ./help/sndfilter.reverb~-help.pd
   #+end_src
 * COMMENT dev
+** release
+   #+begin_src sh
+# debug build is 80.2k
+# release is 61.5, stripped 58.3
+# stripped with -funroll-loops -fomit-frame-pointer -O6: 62.3k
+meson setup build-release
+meson configure build-release -Dbuildtype=release
+meson configure build-release -Dc_args='-funroll-loops -fomit-frame-pointer -O6'
+meson compile -C build-release --verbose
+strip ./build-release/sndfilter.pd_linux
+
+cp ./dist/sndfilter.pd_linux ~/.local/lib/pd/extra/sndfilter/
+ls -alh ~/.local/lib/pd/extra/sndfilter/
+
+mkdir dist
+
+ln -rs ./build-release/sndfilter.pd_linux ./dist/
+ln -rs ./help/sndfilter.reverb~-help.pd ./dist/
+
+(cd dist; rm *.zip; zip -r pd-sndfilter-0.1.zip *)
+
+ln -rs ./dist/sndfilter.pd_linux ~/.local/lib/pd/extra/sndfilter/
+ln -rs ./help/sndfilter.reverb~-help.pd ~/.local/lib/pd/extra/sndfilter/
+
+puredata ./help/sndfilter.reverb~-help.pd
+   #+end_src
 ** emacs
    #+begin_src emacs-lisp :results silent
 (load-file "./dev.el")

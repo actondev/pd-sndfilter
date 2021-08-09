@@ -1,5 +1,7 @@
-libpd/
+/libpd/
 # from https://github.com/pure-data/externals-howto/tree/master/example4
-xfade~.c
-
+# c files in root
+/*.c
+/Makefile
 .cache/
+/dist/
