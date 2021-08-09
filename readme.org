@@ -1,0 +1,107 @@
+#+PROPERTY: header-args:sh :session *pd-sndfilter* :shell-type vterm
+
+This is a puredata external using the [[https://github.com/velipso/sndfilter][velipso/sndfilter]] dsp
+library. Currently only the =reverb= algorithm is available via the
+=[sndfilter.reverb~]= pd object.
+
+Note: Currently the instructions are only for linux.
+
+Todos
+- [ ] Build for windows (mac? anyone?)
+- [ ] add compressor module
+-  add biquad filters? perhaps not needed as pd already has the
+  =[biquad~]= object.
+
+* Build
+  #+begin_src sh
+rm -rf build
+meson setup build
+  #+end_src
+
+** allow-shlib-undefined stupidity & spotting ACTUAL linker error
+   Symbols such as =pd_new=, =gensym= etc are provided by
+   puredata. However, when this library (external in pd lingo) is
+   compiled, these symbols are not present, but they will be provided
+   by the puredata executable itself on loadtime/runtime.
+
+   For this to work, and not get any linke errors, we need the
+   =allow-shlib-undefined= linker flag. *BUT* the problem now is that
+   we loose any other compiler warning about any *actual* linker
+   errors (if, say, we also are using some other utility library that
+   we forgot to link to!).
+
+   The following snippet provides a way to spot such errors by
+   - disabling the =allow-shlib-undefined= linker flag (meson built in
+     option =b_lundef= handles this)
+   - linking against libpd (you have to build it yourself, instructions below)
+   - compile as usually
+   - if you get linker errors now, these should be resolved!
+
+   #+begin_src sh :replace <pd-static-lib>=(read-file-name "pd static lib: ")
+# building libpd
+git clone https://github.com/libpd/libpd.git --recurse-submodules
+(cd libpd; mkdir build; cd build; cmake ..; cmake --build .)
+
+LIBPD_LIB_DIR=$(realpath ./libpd/build)
+
+meson configure build -Db_lundef=true
+meson configure build -Dc_link_args="-L${LIBPD_LIB_DIR} -lpd"
+meson compile -C build # if that fails, then there's an actual linker error
+
+# revert: just ignoring undefined symbol linker errors
+meson configure build -Db_lundef=false
+meson configure build -Dc_link_args=''
+meson compile -C build # that won't mention any linker errors, like ever! :(
+
+# check
+meson configure build | grep b_lundef
+   #+end_src
+
+   read more here:
+   - [[https://stackoverflow.com/questions/12164864/how-to-smartly-detect-undefined-symbols-when-linking-a-plugin-on-gnu-linux][how-to-smartly-detect-undefined-symbols-when-linking-a-plugin]]
+   - [[https://stackoverflow.com/questions/36692315/what-exactly-does-rdynamic-do-and-when-exactly-is-it-needed][what-exactly-does-rdynamic-do-and-when-exactly-is-it-needed]]
+
+* Install
+  To make this available to puredata, the compiled object & the help
+  file need to be placed in puredata's search directory. See more [[https://puredata.info/docs/faq/how-do-i-install-externals-and-help-files][here]].
+  #+begin_src sh
+mkdir -p ~/.local/lib/pd/extra/sndfilter/
+
+cp ./build/sndfilter.pd_linux ~/.local/lib/pd/extra/sndfilter/
+cp ./help/* ~/.local/lib/pd/extra/sndfilter/
+
+# to uninstall
+rm -rf ~/.local/lib/pd/extra/sndfilter/
+  #+end_src
+* Usage
+  #+begin_src sh
+puredata ./help/sndfilter.reverb~-help.pd
+  #+end_src
+* COMMENT dev
+** emacs
+   #+begin_src emacs-lisp :results silent
+(load-file "./dev.el")
+(setq aod-do/action-global #'pd-sndfilter)   
+   #+end_src
+
+** symlinks
+ #+begin_src sh
+# for dev builds (editing sndfilter)
+ln -rs ../sndfilter ./subprojects/sndfilter
+
+# or, for reproducible build
+rm ./subprojects/sndfilter
+
+rm -rf ./subprojects/sndfilter
+ #+end_src
+** pd externals
+   #+begin_src sh
+ls -alh /usr/lib/pd/extra/
+ls -alh /usr/lib/pd/extra/pix_drum/
+   #+end_src
+* COMMENT Reading
+  - https://puredata.info/docs/faq/how-do-i-install-externals-and-help-files
+  - https://puredata.info/docs/developer/LibraryTemplate
+  - https://github.com/pure-data/externals-howto/
+    and especially https://github.com/pure-data/externals-howto/blob/master/example4/xfade%7E.c
+  - https://stackoverflow.com/questions/36692315/what-exactly-does-rdynamic-do-and-when-exactly-is-it-needed

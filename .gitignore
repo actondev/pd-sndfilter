@@ -1,0 +1,5 @@
+libpd/
+# from https://github.com/pure-data/externals-howto/tree/master/example4
+xfade~.c
+
+.cache/

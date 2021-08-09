@@ -1,0 +1,47 @@
+#+PROPERTY: header-args:sh :session *pd-sndfilter* :shell-type vterm
+* Debugging build linker flags etc
+  with Makefile (xfade~ is from https://github.com/pure-data/externals-howto/tree/master/example4 )
+  #+begin_src sh
+make
+make clean
+make -n # dry run
+  #+end_src
+
+  #+begin_src sh
+cc -I"/usr/include/pd" -DPD -DVERSION='""' -fPIC -Wall -W -g -O6 -funroll-loops -fomit-frame-pointer -o "xfade~.o" -c "xfade~.c"
+
+# aha! without -shared, this fails
+cc -rdynamic -shared -fPIC -Wl,-rpath,"\$ORIGIN",--enable-new-dtags -o "xfade~.pd_linux" "xfade~.o"  -lc
+
+chmod a-x "xfade~.pd_linux"
+  #+end_src
+* pd externals structure
+  #+begin_src sh
+ls -alh /usr/lib/pd/extra/
+ls -alh /usr/lib/pd/extra/pix_drum/
+  #+end_src
+* using the external with puredata
+  see https://puredata.info/docs/faq/how-do-i-install-externals-and-help-files
+  #+begin_src sh
+ls /usr/lib/pd/extra/pix_drum/
+
+file /usr/lib/pd/extra/pix_drum/pix_drum.pd_linux
+
+file ./build/libpd-sndfilter.so
+
+mkdir -p ~/.local/lib/pd/extra
+ls ~/.local/lib/pd/extra
+
+mkdir -p ~/.local/lib/pd/extra/sndfilter/
+
+chmod a-x ./build/sndfilter.pd_linux
+
+cp ./build/sndfilter.pd_linux ~/.local/lib/pd/extra/sndfilter/sndfilter.pd_linux
+cp ./help/* ~/.local/lib/pd/extra/sndfilter/
+
+rm ~/.local/lib/pd/extra/sndfilter/*.pd
+
+ls ~/.local/lib/pd/extra/sndfilter/
+
+puredata -verbose ./example/reverb.pd
+  #+end_src

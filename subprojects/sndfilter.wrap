@@ -1,0 +1,4 @@
+[wrap-git]
+ url = https://github.com/actondev/sndfilter.git
+ # sf_reverb_process_ext with float* ins, outs
+ revision = aod/pd
